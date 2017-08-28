@@ -1,0 +1,58 @@
+#Creating a database of arthropods, in which species considered pests or invasive are designated as such, to show up in BLAST results.
+#For an early warning system, to BLAST environmental samples against.
+
+#First, a project was created in BOLD, for pest and invasive species. It has a dataset, composed of sequences from projects listed under "Pest and Invasive Species" category.
+#Download Sequences, want ProcessID, Taxon, BIN URI.
+
+#For general Arthropods, use R package BOLD: ############################### R ######################################
+library(bold)
+
+setwd("/home/laur/Pest_Inv_Arth_DB/input")
+
+#Arthropoda
+arth <- bold_seqspec(taxon="Arthropoda",geo=c("France","Finland","Germany","Netherlands","Portugal","Spain","United Kingdom"))
+
+names(arth)
+head(arth[c(1,7,9,11,13,15,19,21,45)])
+head(arth[c(1,22,8,72)])
+
+write.csv(arth[c(1,22,8,72)], file="Arthropoda_EU.csv",quote=F,row.names=F)
+#######################################################################################################################
+
+##Format fasta files so the first three sections of header are processID|species|BIN and for the invasive, a 4th one: |PEST_INV :
+#Warning: "Windowsy" carriage returns may be encoded in these files, messing up awk processing!
+
+###Pest/Invasive:
+#awk -v FS=" " '{if ($1 ~ /^>/) print $0,"|";else print $0}' DatasetDS-BWPST_LH_BOLD.fas |head
+#awk '{if ($1 ~ />/) print $0,"|P";else print $0}' DatasetDS-BWPST_LH_BOLD_new.fas |head
+awk -vOFS="" '{if ($1 ~ />/) print $0,"|PEST_INV";else print $0}' DatasetDS-BWPST_LH_BOLD_new.fas > DatasetDS-BWPST_LH_BOLD_PESTINV
+
+###Arthropoda:
+awk 'BEGIN{FS=",";OFS=""};{print ">", $1, "|", $2, "|", $3, "\n", $4}' Arthropoda_EU.csv > Arthropoda_EU.fas
+
+
+#Concatenate them into one, pest/inv on top:
+cat DatasetDS-BWPST_LH_BOLD_PESTINV.fas Arthropoda_EU.fas > both.fas
+
+#Change hyphens to Ns, to fit with vsearch:
+tr '-' 'N' < both.fas > bothN.fas
+
+#Change spaces to underscores, so vsearch doesn't chop the headers:
+sed 's/ /_/g' bothN.fas > bothNS.fas
+
+#Dereplicate new file with vsearch:
+#(pest/inv headers all kept?)
+vsearch2 --derep_fulllength bothNS.fas --output both_derep.fas
+
+#Format database for use with NCBI BLAST+:
+makeblastdb -in both_derep.fas -dbtype nucl -parse_seqids
+#Error: duplicate sequence names found. #Awk script from Bioinformatics Stack Exchange Answer:
+awk '(/^>/ && s[$0]++){$0=$0"_"s[$0]}1;' both_derep.fas >both_derep2.fas
+
+makeblastdb -in both_derep2.fas -dbtype nucl -parse_seqids
+
+#Blast the fasta file containing your metabarcoding sequences against the database you just built. Adjust blast settings according to your needs
+blastn -db both_derep2.fas -query /media/laur/8b3e5647-ec62-46b4-acf8-3edd161f78f5/NPBW_Samples_5_2017_Second_2016/reads.fasta -evalue 1e-60 -max_target_seqs 10 -outfmt 6 -out result.bls -num_threads 6
+
+
+
