@@ -34,15 +34,19 @@ df$Kingdom <- rep("Animalia", length(df$OTU))
 otutbl <- cbind.data.frame(df, data$Phylum, data$Class, data$Order, data$Family, data$Genus, data$Species)
 colnames(otutbl)[183:188] <- c("Phylum", "Class", "Order", "Family", "Genus", "Species")
 
-#2016 first:
+######################### 2016 first:
 otutbl2016 <- otutbl[,  !grepl("2018", names(otutbl))]
 head(otutbl2016)
 
-# Combine the data with amp_load() to make it compatible with ampvis2 functions.
-d <- amp_load(otutable=otutbl)
-d
-#Use a custom distance matrix
-# see https://madsalbertsen.github.io/ampvis2/reference/amp_ordinate.html
-# oops I can't because this uses species, etc. and my matrix from before was all BINs.
+metadata2016 <- read.table("Metadata2016_r5.csv", header=T, sep=",")
+head(metadata2016)
 
-amp_ordinate(d, type="PCA", transform="hellinger", sample_color_by = "DummyVariable", sample_colorframe = T)
+# Combine the data with amp_load() to make it compatible with ampvis2 functions.
+d <- amp_load(otutable=otutbl2016, metadata = metadata2016)
+d
+# Cannot use a custom distance matrix
+# due to this packagre requiring 7-level taxonomy as opposed to BINs, which were used in creating Jaccard distance matrix with betadisper.
+# (see https://madsalbertsen.github.io/ampvis2/reference/amp_ordinate.html)
+
+p <- amp_ordinate(d, type="PCA", transform="hellinger", sample_color_by = "Trap", sample_colorframe = T)
+p + ggtitle("PCA of taxonomy by trap, 2016")
