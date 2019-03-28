@@ -50,3 +50,13 @@ d
 
 p <- amp_ordinate(d, type="PCA", transform="hellinger", sample_color_by = "Trap", sample_colorframe = T)
 p + ggtitle("PCA of taxonomy by trap, 2016")
+######################## 2018:
+otutbl2018 <- otutbl[, !grepl("2016", names(otutbl))]
+head(otutbl2018)
+metadata2018 <- read.table("Metadata2018_r5.csv", header=T, sep=",")
+head(metadata2018)
+
+d <- amp_load(otutable=otutbl2018, metadata=metadata2018)
+d
+p <- amp_ordinate(d, type="PCA", transform="hellinger", sample_color_by = "Trap", sample_colorframe = T)
+p + ggtitle("PCA of taxonomy by trap, 2018")
